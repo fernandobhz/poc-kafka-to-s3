@@ -7,7 +7,7 @@ export function writeToConsole(topic, partition, data, uploadProgressCallBack) {
     `Console, topic: '${topic}', partition: '${partition}', length: '${data.length}'`
   );
   uploadProgressCallBack();
-  log(``)
+  log(``);
 }
 
 export function writeToS3(topic, partition, data, uploadProgressCallBack) {
@@ -19,7 +19,7 @@ export function writeToS3(topic, partition, data, uploadProgressCallBack) {
     Key: `kafka-to-s3-uploads/${topic}/${partition}/${secondsFromEpoch}.txt`,
     Body: data,
   };
-  
+
   const s3 = new AWS.S3({
     accessKeyId,
     secretAccessKey,
@@ -41,28 +41,58 @@ export const produceMessage = async (producer, topic) => {
   const messages = [message];
   await producer.send({ topic, messages });
   log(topic, message);
-  log(``)
+  log(``);
 };
 
-export const startProducingMessages = async (admin, producer, topicRegex, interval) => {
+export const startProducingMessages = async (
+  admin,
+  producer,
+  topicRegex,
+  interval
+) => {
   const allKafkaTopics = await admin.listTopics();
-  const filteredTopics = allKafkaTopics.filter((topic) => topic.match(topicRegex));
+  const filteredTopics = allKafkaTopics.filter((topic) =>
+    topic.match(topicRegex)
+  );
 
   filteredTopics.forEach((topic) => {
-    setInterval(
-      produceMessage,
-      interval,
-      producer,
-      topic
-    );
+    setInterval(produceMessage, interval, producer, topic);
   });
-}
+};
 
-export const subscribeToTopicsWithRegex = async (admin, consumer, topicRegex) => {
+export const subscribeToTopicsWithRegex = async (
+  admin,
+  consumer,
+  topicRegex
+) => {
   const allKafkaTopics = await admin.listTopics();
-  const filteredTopics = allKafkaTopics.filter((topic) => topic.match(topicRegex));
+  const filteredTopics = allKafkaTopics.filter((topic) =>
+    topic.match(topicRegex)
+  );
 
   filteredTopics.forEach((topic) => {
     consumer.subscribe({ topic });
   });
-}
+};
+
+export const upsertTopics = async (admin, topics) => {
+  const allTopicsArray = await admin.listTopics();
+
+  const allTopicsMap = allTopicsArray.reduce(
+    (previousValue, currentValue, currentIndex, array) => ({
+      ...previousValue,
+      [currentValue]: currentIndex,
+    }),
+    {}
+  );
+
+  const missingTopics = [...topics].filter(
+    (topic) => !!allTopicsMap[topic] === false
+  );
+
+  const createTopicParams = {
+    topics: missingTopics.map((topic) => ({ topic })),
+  };
+
+  await admin.createTopics(createTopicParams);
+};

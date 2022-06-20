@@ -5,6 +5,7 @@ import {
   writeToS3,
   startProducingMessages,
   subscribeToTopicsWithRegex,
+  upsertTopics
 } from "./helpers.mjs";
 
 const ONE_MINUTE = 60 * 1000;
@@ -17,6 +18,7 @@ const localhostBroker = "localhost:9092";
 const brokers = [localhostBroker];
 const groupId = clientId;
 const topicRegex = "cars-.*";
+const topicList = [`cars-bmw`, `cars-toyota`, `cars-honda`];
 
 const kafka = new Kafka({ clientId, brokers });
 
@@ -29,6 +31,7 @@ await producer.connect();
 const consumer = kafka.consumer({ groupId });
 await consumer.connect();
 
+await upsertTopics(admin, [`cars-bmw`, `cars-toyota`, `cars-honda`]);
 await subscribeToTopicsWithRegex(admin, consumer, topicRegex);
 await startProducingMessages(admin, producer, topicRegex, TOPIC_PRODUCER_INTERVAL);
 
